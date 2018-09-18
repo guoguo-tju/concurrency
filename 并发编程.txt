@@ -195,4 +195,34 @@ CPU多级缓存:
 
 		单例: spring管理的bean通常都使用的单例，单例没有专属的使用场景，只要一个类实例化后可以一直使用，就可以设计成单例，减少频繁创建对象的开销
 
-	不可变对象-发布了就是安全的 比如String类
+	不可变对象
+		有一种对象只要它发布了就是安全的，它就是不可变对象。
+
+		final关键字:
+			修饰类：类不能被集成。
+			  基础类型的包装类都是final类型的类。final类中的成员变量可以根据需要设置为final，但是要注意的是，final类中的所有成员方法都会被隐式的指定为final方法
+			修饰方法：
+			  (1)被继承后不能修改该方法
+			  (2)效率：在早期的java实现版本中，会将final方法转为内嵌调用。但是如果方法过于庞大，可能看不见效果。一个private方法会被隐式的指定为final方法
+			修饰变量：
+			  基本数据类型变量，在初始化之后，它的值就不能被修改了。如果是引用类型变量，在它初始化之后便不能再指向另外的对象。(注意:被final修饰的引用类型变量，虽然不能重新指向，但是可以修改)
+
+		创建不可变对象:
+			1.Java的Collection类的unmodifiable相关方法,包含:unmodifiableList,unmodifiableMap,unmodifiableSet...
+			   使用时: map = Collections.unmodifiableMap(map);
+
+			   unmodifiable相关类的实现原理:
+			   	 Collections.unmodifiableMap在执行时,将参数中的map对象进行了转换转换为Collection类中的内部类UnmodifiableMap对象。而UnmodifiableMap对map的更新方法（比如put、remove等）进行了重写，调用时均抛出UnsupportedOperationException异常，这样就做到了map对象的不可变。
+
+			2.使用Guava的Immutable相关类,包含:ImmutableSet,ImmutableList,ImmutableMap...
+				1)使用时: Immutablelist<Integer> list = ImmutableList.of(1,2,3);
+					list.add(4);  这一句在书写完就会被IDE提示该add方法为过时方法，实际为不可用方法,运行时仍然会抛出UnsupportedOperationException异常.
+				Immutable相关类实现原理:跟Java的unmodifiable相关类相似的实现方法.
+				2)ImmutableSet除了使用of的方法进行初始化,还可以使用copyof方法,将Collection,iterator类型作为参数.
+					private final static ImmutableSet set = ImmutableSet.copyOf(list);
+					private final static ImmutableSet set = ImmutableSet.copyOf(list.iterator());
+				3)ImmutableMap有特殊的builder写法：
+					private final static ImmutableMap<Integer, Integer> map = ImmutableMap.of(1, 2, 3, 4);  //奇数位是key,偶数位是value
+ 					private final static ImmutableMap<Integer, Integer> map2 = ImmutableMap.<Integer, Integer>builder()
+            		.put(1, 2).put(3, 4).put(5, 6).build();			//ImmutableMap的builder写法.
+
