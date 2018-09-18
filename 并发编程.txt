@@ -226,3 +226,5 @@ CPU多级缓存:
  					private final static ImmutableMap<Integer, Integer> map2 = ImmutableMap.<Integer, Integer>builder()
             		.put(1, 2).put(3, 4).put(5, 6).build();			//ImmutableMap的builder写法.
 
+         问: ImmutableXXX修改的集合必须配上final才可以实现不可变对象，否则可以修改其对象引用，是这样吗?
+         答: 是的，我们在使用一个不可变对象的实例时，其实很关键一点就是添加final修饰，否则我们很多接口来声明的类实例，在实际使用中被改了引用是一件很尴尬的事情。JDK里许多方法也要求传入接口参数必须是final修饰的变量，保证在方法处理过程中不会修改引用。否则一个参数传到一个方法将很不安全，因为你根本不知道这个方法会对传入的参数做怎样的处理，这也是一个比较好的实践，可以使用final时尽量使用。
