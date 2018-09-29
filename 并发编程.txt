@@ -244,3 +244,8 @@ CPU多级缓存:
         ``创建拦截器interceptor,重写preHandle()(它是进入url之前拦截处理)和afterCompletion()(它是执行完url之后拦截处理)方法,在afterCompletion方法中ThreadLocalCache.remove()释放,避免内存泄漏.
         ``在springboot的启动类Application中@Bean注册filter与interceptor.(也可以写一个配置类来@Bean注册)
         ``写一个Controller来模拟请求.
+          先进filter,后进interceptor
+
+        问:为什么要使用过滤器add和拦截器remove,用其中的一个就可以实现把
+        答:首先如果项目里只有一个filter和一个interceptor，或者只有其中一种时，用其中一个就可以实现，这是没问题的。
+           接下来，说一下这样做的目的。这样做，主要是考虑在项目中有多个filter和一个interceptor时，比如项目里同时有登录校验的filter、权限校验的filter，然后有一个interceptor做一些通用的记录（比如接口耗时）。这时，在登录校验的filter里把登录校验的信息写入threadLocal，然后需要在接口该执行的都执行完再从threadlocal中移除登录信息。在多个filter时，直接使用一个就很可能出现后面的filter还要使用，但是还没使用时就已经移除的情况。这时放到interceptor里保证最后阶段移除就明显更不容易出错了。
