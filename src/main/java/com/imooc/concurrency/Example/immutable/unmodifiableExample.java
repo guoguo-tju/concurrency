@@ -30,7 +30,7 @@ public class unmodifiableExample {
     }
 
     public static void main(String[] args) {
-        map.put(1, 3);
+//        map.put(1, 3);
         log.info("{}",map.get(1));
     }
 
