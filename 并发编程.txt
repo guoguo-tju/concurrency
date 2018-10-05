@@ -249,3 +249,54 @@ CPU多级缓存:
         问:为什么要使用过滤器add和拦截器remove,用其中的一个就可以实现把
         答:首先如果项目里只有一个filter和一个interceptor，或者只有其中一种时，用其中一个就可以实现，这是没问题的。
            接下来，说一下这样做的目的。这样做，主要是考虑在项目中有多个filter和一个interceptor时，比如项目里同时有登录校验的filter、权限校验的filter，然后有一个interceptor做一些通用的记录（比如接口耗时）。这时，在登录校验的filter里把登录校验的信息写入threadLocal，然后需要在接口该执行的都执行完再从threadlocal中移除登录信息。在多个filter时，直接使用一个就很可能出现后面的filter还要使用，但是还没使用时就已经移除的情况。这时放到interceptor里保证最后阶段移除就明显更不容易出错了。
+
+    常用的线程不安全的类:
+    		(1)StringBuilder与StringBuffer
+    			StringBuilder是线程不安全的，而StringBuffer是线程安全的。分析源码：StringBuffer的方法使用了synchronized关键字修饰。
+    			StringBuilder效率高,可以在方法里做局部变量时使用,线程封闭.
+    		(2)simpleDateFormat与jodatime插件
+    			simpleDateFormat是线程不安全的,可以在new对象的时候将其放在方法里面,因为局部变量线程封闭,这样就是线程安全的.
+    			jodatime插件可保证线程安全性.
+    			Joda 类具有不可变性，因此它们的实例无法被修改。（不可变类的一个优点就是它们是线程安全的）
+    			private static DateTimeFormatter dateTimeFormatter = DateTimeFormat.forPattern("yyyyMMdd");
+    			private static void update(int i) {
+    			    log.info("{}, {}", i, DateTime.parse("20180208", dateTimeFormatter).toDate());
+    			}
+    		(3)ArrayList,HashSet,HashMap等Collection类
+    			线程不安全的原因,以arrayList为例,每次进行插入操作的时候,都会做扩容处理,会导致线程不安全.因为添加一个元素时会分两步来完成:
+    				1.增大数组的size值
+    				2.在数组Item[size]的位置存放此元素
+    			由于这两步不是原子性的,所以多线程时会出现线程安全问题.
+    		(4)先检查再执行: if(condition(a)){handle(a)};
+    		   判断语句和执行语句无法保证原子性,所以线程不安全
+
+    		问: 以下业务代码:
+    		 for (Long houseId: houseIds) {
+    		    //线程处理
+    		    executorService.execute(() -> {
+    		        //一些查询操作
+    		        xxxService.select();
+    		        //一些更新缓存的操作
+    		        xxxRedis.update();
+    		        if(如果不需要保存){
+    				    //停止线程
+    			        Thread.currentThread().interrup();
+    		        }
+    		        //一些添加操作
+    		        xxxService.batchInsert();
+    		    }
+    		 }
+    		 程序却会不断抛出InterruptedException,线程不是在wait, join, sleep时候被interrupt才会抛出这个异常吗?
+    		答: 实际中很少有直接调用interrupt的，你如果想结束线程，直接return就可以了啊，你目前使用的是线程池，你很难知道其他线程是什么状态，完全交给线程池调度就可以了。
+
+    		问: StringBuilder快，StringBuffer安全，那String这个类，顿时就有点尴尬了，那我们一般为什么不就用这两个类，干嘛还用String？（尽管我们知道，很多场景下，我们一般都是习惯性定义字符串为String）
+    		这三者的应用场景有什么区别，什么情况下，我该用哪个类，尤其String类。
+    		答: 字符串拼接的时候，用SringBuilder和StringBuffer性能更好，因为String是不能改变的，例如我们声明了一个String s = "abc";当我们改为String s = s+"de";的时候，其实是重新声明了一个String s，就是String s="abc"+"de";而不是直接在之前的String上面操作，所以会有性能上面的问题。而StringBuilder和StringBuffer调用append方法是直接在上面进行修改操作的，性能比String好。然后其余的问题就是StringBuilder是线程不安全的，而StringBuffer是线程安全的，在不同的场景进行选择了。 补充一点，如果String 后面是多个【常量】字符串拼接，其实和SringBuilder、StringBuffer也差不多，这时候编译器在编译阶段会做特殊的优化
+
+
+    	同步容器:
+    		(1)ArrayList的线程安全类: Vector和Stack
+    		   Vector相当于加了synchronized的arrayList;
+    		   Stack(栈)它继承了Vector,也是使用synchronized修饰了.
+    		  但是同步容器在某些情况下是线程不安全的:
+    		  比如并发执行删除与获取的操作.有可能上面刚删除完,下面就获取,就会报数组越界异常.因为synchronize只锁了方法,要想两个方法之间保证原子性就需要加上Lock或者synchronized来同步.
