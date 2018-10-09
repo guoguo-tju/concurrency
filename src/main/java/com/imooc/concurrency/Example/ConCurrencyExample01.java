@@ -3,10 +3,7 @@ package com.imooc.concurrency.Example;
 import com.imooc.concurrency.annotation.UnThreadSafe;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 @Slf4j
 @UnThreadSafe
@@ -24,7 +21,7 @@ public class ConCurrencyExample01 {
         ExecutorService executorService = Executors.newCachedThreadPool();
         //Semaphore设置信号量
         Semaphore semaphore = new Semaphore(threadTotal);
-        //计数器闭锁
+        //计数器闭锁,目的是保证所有的请求都处理完才会输出结果
         CountDownLatch countDownLatch = new CountDownLatch(clientTotal);
 
         for (int i = 0 ; i < clientTotal ; i++){
@@ -43,6 +40,7 @@ public class ConCurrencyExample01 {
         }
         //当执行完所有并发后,才唤醒主线程
         countDownLatch.await();
+        countDownLatch.await(12, TimeUnit.MILLISECONDS);
         //关闭线程池
         executorService.shutdown();
         log.info("count:{}",count);
