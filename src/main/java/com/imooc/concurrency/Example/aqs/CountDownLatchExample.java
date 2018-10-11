@@ -42,6 +42,7 @@ public class CountDownLatchExample {
         //countDownLatch.await();
 
         //设置等待的时间，主线程到这里先阻塞,如果超过此时间，则主线程不继续等待,往下执行
+        //(用在某些复杂的功能:要给定执行时间,超过这个时间就算没执行完也要接着往下执行的情况,但是之前的其他多线程也会执行完)
         countDownLatch.await(10, TimeUnit.MILLISECONDS);
         log.info("finish");
         //使用完毕要关闭线程池(不是立刻关闭,而是等所有线程都执行完才关闭)

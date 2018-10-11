@@ -373,11 +373,11 @@ CPU多级缓存:
 
         J.U.C之AQS--CountDownlatch
 
-            CountDownLatch，通过给定的计数器数值为其初始化，该计数器是原子性操作，保证同时只有一个线程去操作该计数器。调用该类await方法的线程会一直处于阻塞状态。只有其他线程调用countDown方法（每次使计数器-1）,使计数器归零才能继续执行。
+            CountDownLatch，通过给定的计数器数值为其初始化，该计数器是原子性操作，保证同时只有一个线程去操作该计数器。调用该类await方法的线程会一直处于阻塞状态。只有其他线程调用countDown方法（每次使计数器-1）,使计数器归零(即其他方法都执行完)才能继续执行。
                 CountDownLatch countDownLatch = new CountDownLatch(200);
                 countDownLatch.countDown();
                 countDownLatch.await();
-            CountDownLatch的await方法还有重载形式，可以设置等待的时间，设置等待的时间，主线程到这里先阻塞,如果超过此时间，则主线程不继续等待,往下执行：
+            CountDownLatch的await方法还有重载形式，可以设置等待的时间，主线程到这里先阻塞,如果超过此时间，则主线程不继续等待,往下执行(用在某些复杂的功能:要给定执行时间,超过这个时间就算没执行完主线程也要接着往下执行的情况,但是之前的其他多线程也会执行完)：
                 countDownLatch.await(10, TimeUnit.MILLISECONDS);
 
             问: countDownLatch 的作用在哪里呢，保证线程安全吗?
@@ -386,4 +386,24 @@ CPU多级缓存:
             继续说一下实际中我们会在什么场景使用countDownLatch：比如现在有一个任务，需要开启多个线程去处理，然后在任务执行完去做后面的事情。这时候，要保证开启多个线程都处理完再继续后面的操作，就需要借助countDownLatch了。
 
 
+        J.U.C之AQS--Semaphore
+
+            保证同一时刻并发访问的线程数目,用于仅能提供有限个数的访问资源,比如数据库的有效连接个数.
+            final Semaphore semaphore = new Semaphore(3);
+            semaphore.acquire();
+            test();
+            semaphore.release();
+
+            如果并发特别多,需要丢弃一部分许可:
+            1.semaphore.tryAcquire()尝试获取一个许可.未得到许可的丢弃.
+            2.semaphore.tryAcquire(5000, TimeUnit.MILLISECONDS)  尝试获取许可一段时间，未得到许可的线程丢失
+
+            注意: 测试代码不用@test，改成用main主方法，JUnit在进行单元测试的时候，如果被@Test注释的方法执行完成，那么内部开启的线程也会被强制退出，退出是测试框架进行的操作。
+
+            问: 老师，Semaphore和RateLimiter根据他们的特性，都是可以用来限制并发，那么这两者有什么区别呢？
+            答: 你好，Semaphore：信号量，直译很难理解。作用是限定只有抢到信号的线程才能执行，其他的都得等待！你可以设置N个信号，这样最多可以有N个线程同时执行。注意，其他的线程也在，只是挂起了.RateLimiter是guava的，直译是速率限制器。其作用是 限制一秒内只能有N个线程执行，超过了就只能等待下一秒。注意，N是double类型。前者控制的是同一时刻同时运行的线程数目，后者控制的是1s内允许执行的次数，效果上是不同的。
+            问: 那假设要执行10万次数据库插入操作，使用RateLimiter进行限制，每秒运行执行300次，那么10万次操作在一秒内并发执行的的时候，剩余的99700次操作是不是会被丢弃？
+            答: 可以控制丢弃或者慢慢处理.
+            问: 如果有的话应该也是通过acquire或者tryAcquire来区别的吧，我看到Semaphore和RateLimiter都有这两个方法。那么，老师，如果要在某个数据库方法内限制执行次数，是不是使用RateLimiter更合理？
+            答: 嗯，是的，控制1s内处理的个数，使用信号量的话，可能处理的特别快，导致短时间内入库太多数据，直接出现主从延迟变大等情况。
 
