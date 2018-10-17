@@ -40,7 +40,7 @@ public class ConCurrencyExample01 {
         }
         //当执行完所有并发后,才唤醒主线程
         countDownLatch.await();
-        countDownLatch.await(12, TimeUnit.MILLISECONDS);
+//        countDownLatch.await(12, TimeUnit.MILLISECONDS);
         //关闭线程池
         executorService.shutdown();
         log.info("count:{}",count);

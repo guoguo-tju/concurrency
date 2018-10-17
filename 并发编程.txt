@@ -407,3 +407,23 @@ CPU多级缓存:
             问: 如果有的话应该也是通过acquire或者tryAcquire来区别的吧，我看到Semaphore和RateLimiter都有这两个方法。那么，老师，如果要在某个数据库方法内限制执行次数，是不是使用RateLimiter更合理？
             答: 嗯，是的，控制1s内处理的个数，使用信号量的话，可能处理的特别快，导致短时间内入库太多数据，直接出现主从延迟变大等情况。
 
+
+        J.U.C之AQS--CyclicBarrier:
+
+        	多线程计算数据,最后合并计算结果的.
+
+        	catchDownLatch:一个或者n个线程等待其他线程执行完才能继续执行. 计数器只能用一次.
+        	CyclicBarrier:多个线程相互等待,直到所有的线程满足条件以后才继续执行.每当有一个线程执行了await方法，计数器就会执行+1操作，待计数器达到预定的值，所有的线程再同时继续执行。由于计数器释放之后可以重用（reset方法），所以称之为循环屏障。计数器可以重复使用.
+
+        	barrier.await(2000,TimeUnit.MILLISECONDS); 会抛出异常,需要try-catch捕获,如果不捕获的话会影响下面的程序执行
+        	try{
+        		barrier.await(2000, TimeUnit.MILLISECONDS);
+        	} catch (Exception e) {
+        		log.warn("BarrierException" ,e)
+        	}
+        	log.info("{} continue" , threadNum);
+        	CycliBarrier barrier = new CyclicBarrier(5 , () -> {
+        		log.info("callback is running");
+        	}) 进入屏障后(满足有5个线程await),优先执行runnable.
+
+
