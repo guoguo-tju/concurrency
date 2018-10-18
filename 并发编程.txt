@@ -371,6 +371,16 @@ CPU多级缓存:
             答: 你好,CopyOnWriteArrayList不适用于实时读的场景，像拷贝数组、新增元素都需要时间,所以调用一个set操作后,读取到数据可能还是旧的,虽然CopyOnWriteArrayList能做到最终一致性,但是还是没法满足实时性要求。因此如果对实时要求特别高，那么CopyOnWriteArrayList 可能确实不太适合，他主要用于读多写少的情景，这代表实际的写理论上会非常少，而且是通过最终数据的正确来保证线程安全。
             如果任何一个时间点都期望数据是正确的，那么这时候应该考虑使用同步容器，并发容器没法取代同步容器，并发容器更多的是在保证线程安全的大前提下，尽可能提升并发的性能
 
+
+        J.U.C之AQS
+            AQS全名：AbstractQueuedSynchronizer，是并发容器J.U.C（java.lang.concurrent）下locks包内的一个类。它实现了一个FIFO(FirstIn、FisrtOut先进先出)的队列。底层实现的数据结构是一个双向列表。
+              Sync queue：同步队列，是一个双向列表。包括head节点和tail节点。head节点主要用作后续的调度。
+              Condition queue：非必须，单向列表。当程序中存在cindition的时候才会存在此列表。
+            AQS的大致实现思路:
+              AQS内部维护了一个CLH队列来管理锁。线程会首先尝试获取锁，如果失败就将当前线程及等待状态等信息包装成一个node节点加入到同步队列sync queue里。
+              接着会不断的循环尝试获取锁，条件是当前节点为head的直接后继才会尝试。如果失败就会阻塞自己直到自己被唤醒。而当持有锁的线程释放锁的时候，会唤醒队列中的后继线程。
+
+
         J.U.C之AQS--CountDownlatch
 
             CountDownLatch，通过给定的计数器数值为其初始化，该计数器是原子性操作，保证同时只有一个线程去操作该计数器。调用该类await方法的线程会一直处于阻塞状态。只有其他线程调用countDown方法（每次使计数器-1）,使计数器归零(即其他方法都执行完)才能继续执行。
@@ -425,5 +435,101 @@ CPU多级缓存:
         	CycliBarrier barrier = new CyclicBarrier(5 , () -> {
         		log.info("callback is running");
         	}) 进入屏障后(满足有5个线程await),优先执行runnable.
+
+
+       	J.U.C之AQS--ReentrantLock
+       	  java中有两类锁，一类是Synchronized，而另一类就是J.U.C中提供的锁。ReentrantLock与Synchronized都是可重入锁，本质上都是lock与unlock的操作。接下来我们介绍三种J.U.C中的锁，其中 ReentrantLock使用synchronized与之比对介绍。
+
+       	  ReentrantLock与synchronized的区别:
+       	  	``可重入性：两者的锁都是可重入的，差别不大，有线程进入锁，计数器自增1，等下降为0时才可以释放锁
+		    ``锁的实现：synchronized是基于JVM实现的（用户很难见到，无法了解其实现），ReentrantLock是JDK实现的。
+			``性能区别：在最初的时候，二者的性能差别差很多，当synchronized引入了偏向锁、轻量级锁（自选锁）后，二者的性能差别不大，官方推荐synchronized（写法更容易、在优化时其实是借用了ReentrantLock的CAS技术，试图在用户态就把问题解决，避免进入内核态造成线程阻塞）
+			``功能区别：
+			（1）便利性：synchronized更便利，它是由编译器保证加锁与释放。ReentrantLock是需要手动释放锁，所以为了避免忘记手工释放锁造成死锁，所以最好在finally中声明释放锁。
+			（2）锁的细粒度和灵活度，ReentrantLock优于synchronized
+
+		  ReentrantLock独有的功能:
+		  	``可以指定是公平锁还是非公平锁(在new对象时可以指定),sync只能是非公平锁.（所谓公平锁就是先等待的线程先获得锁）
+			``提供了一个Condition类，可以分组唤醒需要唤醒的线程.不像是synchronized要么随机唤醒一个线程，要么全部唤醒。
+			``提供能够中断等待锁的线程的机制，通过lock.lockInterruptibly()实现，这种机制ReentrantLock是一种自选锁，通过循环调用CAS操作来实现加锁。性能比较好的原因是避免了进入内核态的阻塞状态。
+
+		  Condition的使用:
+		  	Condition可以非常灵活的操作线程的唤醒，下面是一个线程等待与唤醒的例子，其中用1234序号标出了日志输出顺序:
+		  	public static void main(String[] args) {
+		  	ReentrantLock reentrantLock = new ReentrantLock();
+		  	Condition condition = reentrantLock.newCondition();//创建condition
+		  	//线程1
+		  	new Thread(() -> {
+		        try {
+			            reentrantLock.lock();
+			            log.info("wait signal"); // 1
+			            condition.await();
+			        } catch (InterruptedException e) {
+			            e.printStackTrace();
+			        }
+			        log.info("get signal"); // 4
+			        reentrantLock.unlock();
+			    }).start();
+			//线程2
+		    new Thread(() -> {
+		        reentrantLock.lock();
+		        log.info("get lock"); // 2
+		        try {
+		            Thread.sleep(3000);
+		        } catch (InterruptedException e) {
+		            e.printStackTrace();
+		        }
+		        condition.signalAll();//发送信号
+		        log.info("send signal"); // 3
+		        reentrantLock.unlock();
+		   		}).start();
+			}
+
+			输出过程讲解：
+			1、线程1调用了reentrantLock.lock()，线程进入AQS等待队列，输出1号log
+			2、接着调用了awiat方法，线程从AQS队列中移除，锁释放，直接加入condition的等待队列中
+			3、线程2因为线程1释放了锁，拿到了锁，输出2号log
+			4、线程2执行condition.signalAll()发送信号，输出3号log
+			5、condition队列中线程1的节点接收到信号，从condition队列中拿出来放入到了AQS的等待队列,这时线程1并没有被唤醒。
+			6、线程2调用unlock释放锁，因为AQS队列中只有线程1，因此AQS释放锁按照从头到尾的顺序，唤醒线程1
+			7、线程1继续执行，输出4号log，并进行unlock操作。
+
+       	  读写锁：ReentrantReadWriteLock读写锁
+       		在没有任何读写锁的时候才能实现写入操作,悲观读取,在获取写入锁的时候,不允许有任何读锁还保持.如果读多写少的话会导致写锁饥饿,因为读锁一直被使用,写锁无法执行.
+       		 private final Lock readLock = lock.readLock();//读锁
+    		 private final Lock writeLock = lock.writeLock();//写锁
+
+       	  票据锁：StempedLock
+       	  	它控制锁有三种模式（写、读、乐观读）。一个StempedLock的状态是由版本和模式两个部分组成。锁获取方法返回一个数字作为票据（stamp），他用相应的锁状态表示并控制相关的访问。数字0表示没有写锁被锁写访问，在读锁上分为悲观锁和乐观锁。
+       	  	乐观读：如果读的操作很多写的很少，我们可以乐观的认为读的操作与写的操作同时发生的情况很少，因此不悲观的使用完全的读取锁定。程序可以查看读取资料之后是否遭到写入资料的变更，再采取之后的措施。
+
+       	  synchronized锁:在JVM层面实现锁定,JVM会替我们释放锁定.
+       	  ReentrantLock,ReentrantReadWriteLock,StampedLock: 是对象层面的锁定,要保证锁一定会被释放就需要将解锁其放在finally里面,不然会死锁.
+       	  StampedLock对吞吐量有巨大的改进,特别是在读线程越来越多的场景下.
+
+       	  如何选择锁?:
+       	  1、当只有少量竞争者，使用synchronized
+		  2、竞争者不少但是线程增长的趋势是能预估的，使用ReetrantLock
+		  3、synchronized不会造成死锁，jvm会自动释放死锁。
+
+		  问: 老师，为什么加锁释放锁本身可以是安全的？另外，假若面试时，被问到锁机制的底层是怎么实现的，我该怎么说比较好，毕竟锁的类别也很多。。
+		  答: 你这里说的锁应该都是针对ReentrantLock这种独享锁，他的安全主要提现在一旦加锁，就只有一个线程可以通过，相当于单线程操作，因此可以保证安全。
+		  对于面试中问到，可以这样去回答：课程里介绍了三类锁，核心代表是 synchronized、AtomicXXX、ReentrantLock
+		  synchronized属于java提供的关键字，他的实现是借助于cpu指令的字节码来实现的。
+		  AtomicXXX本质上其实不是锁，而是通过CAS自旋（循环尝试去更新，直至成功)与volatile变量互相配合来保证线程安全的更新
+		  ReentrantLock则是基于AQS进行的实现，核心是借助里面CLH队列实现锁的排队策略
+
+		  问: 多线程的代码是如何调试的?
+		  答: 我们调试只能看单线程的内容，会影响多线程的执行.
+		  实际开发中，我们做多线程处理时，对输出的log讲究很多,核心环节必须输出log及相关变量值。一个配置好的log在做输出时，通常会包含时间及线程名，真出问题时，需要找到相关的日志，然后分析线程的运行情况，确定问题根本原因。
+		  这也说明，log的记录很重要。
+
+		  面试题: 对象锁和类锁的区别?
+		  答: 对象锁锁的是这个类的某一个对象,类锁锁的是这个类的所有对象
+		  作用于调用的对象:多个线程同时执行同一个对象的example01.test()时,是一个先执行完再执行下一个.多个线程同时执行该类的两个对象example01.test(),example02.test(),结果是两个方法交替执行.
+	   	  作用于调用的类:这个类的不同对象多线程执行方法,都是先执行完一个再执行下一个.
+
+		  注意: 不要使用system.out的打印结果来验证多线程的输出结果，请使用课程里介绍的log或者自己定义一个log。你这样输出的结果是无法具体确认是哪个线程执行的，尤其是你要分析的内容与哪个线程执行有关，而log在输出日志则会带上时间和实际执行的线程，这两项对结果的分析至关重要。
+
 
 
