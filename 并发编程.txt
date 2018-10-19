@@ -532,4 +532,11 @@ CPU多级缓存:
 		  注意: 不要使用system.out的打印结果来验证多线程的输出结果，请使用课程里介绍的log或者自己定义一个log。你这样输出的结果是无法具体确认是哪个线程执行的，尤其是你要分析的内容与哪个线程执行有关，而log在输出日志则会带上时间和实际执行的线程，这两项对结果的分析至关重要。
 
 
+    J.U.C--FutureTask
+		  FutureTask是J.U.C中的类，是一个可删除的异步计算类。这个类提供了Future接口的的基本实现，使用相关方法启动和取消计算，查询计算是否完成，并检索计算结果。只有在计算完成时才能使用get方法检索结果;如果计算尚未完成，get方法将会阻塞。一旦计算完成，计算就不能重新启动或取消(除非使用runAndReset方法调用计算)。
+
+		  new Thread()和Runnable()的缺点:线程执行完之后无法获取返回值,Java1.5之后就提供了Callable与Future，这两个接口就可以实现获取任务执行结果
+
+		  Future接口:FutrueExample
+		  FutureTask实现了RunnableFuture接口，而RunnableFuture接口继承了Runnable与Future接口，所以它既可以作为Runnable被线程中执行，又可以作为callable获得返回值。
 
