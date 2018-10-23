@@ -540,3 +540,6 @@ CPU多级缓存:
 		  Future接口:FutrueExample
 		  FutureTask实现了RunnableFuture接口，而RunnableFuture接口继承了Runnable与Future接口，所以它既可以作为Runnable被线程中执行，又可以作为callable获得返回值。
 
+		  问: 同样的代码，为什么我的代码先执行的do something in main， 后执行的do something in callable呢？这个和线程优先级有关系吗？
+          答: 当前线程额外启动了一个线程，这时当前线程和额外启动的线程由于受CPU调度的影响，执行先后并不是完全确定的，你如果多执行几次，应该也会出现我课程演示时相同的结果。不过有一点可以肯定的是，发生这种情况时，大家执行的时间都会非常的接近，应该是毫秒级别相差无几。这个例子也说明了一个问题，就是两个线程定义的先后顺序决定不了执行的顺序。
+

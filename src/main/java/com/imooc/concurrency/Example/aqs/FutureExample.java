@@ -37,6 +37,7 @@ public class FutureExample {
         Thread.sleep(1000);
         String result = future.get();  //一直阻塞,直到call()执行完
         log.info("result : {}", result);
+        executorService.shutdown();
 
     }
 
