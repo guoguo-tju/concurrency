@@ -3,6 +3,8 @@ package com.imooc.concurrency.Example;
 import com.imooc.concurrency.annotation.UnThreadSafe;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -16,9 +18,10 @@ public class ConCurrencyExample01 {
 
     public static Integer count = 0;
 
+    public static ExecutorService executorService = Executors.newCachedThreadPool();
+
     public static void main(String[] args) throws InterruptedException {
 
-        ExecutorService executorService = Executors.newCachedThreadPool();
         //Semaphore设置信号量
         Semaphore semaphore = new Semaphore(threadTotal);
         //计数器闭锁,目的是保证所有的请求都处理完才会输出结果

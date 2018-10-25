@@ -588,3 +588,42 @@ CPU多级缓存:
             5. SynchronusQueue：只能插入一个元素，同步队列，无界非缓存队列，不存储元素。
 
         注:executor.newCachedThreadPool(),看似是无边界的,其实他的边界是整型Integer的最大值.(详见源码)
+
+
+    线程池:
+
+        new Thread的弊端:
+        1. 每次new Thread 新建对象，性能差
+        2. 线程缺乏统一管理，可能无限制的新建线程，相互竞争，可能占用过多的系统资源导致死机或者OOM（out of memory 内存溢出），这种问题的原因不是因为单纯的new一个Thread，而是可能因为程序的bug或者设计上的缺陷导致不断new Thread造成的。
+        3. 缺少更多功能，如更多执行、定期执行、线程中断。
+
+        线程池的好处:
+        1. 重用存在的线程，减少对象创建、消亡的开销，性能好
+        2. 可有效控制最大并发线程数，提高系统资源利用率，同时可以避免过多资源竞争，避免阻塞。
+        3. 提供定时执行、定期执行、单线程、并发数控制等功能。
+
+        线程池核心类--ThreadPoolExecutor
+        参数说明: ThreadPoolExecutor一共有七个参数，这七个参数配合起来，构成了线程池强大的功能。
+        1. corePoolSize: 核心线程数量
+        2. maxmumPoolSize: 线程最大线程数
+        3. workQueue: 阻塞队列, 存储等待执行的任务,很重要, 会对线程池运行过程产生重大影响.
+
+            当我们提交一个新的任务到线程池，线程池会根据当前池中正在运行的线程数量来决定该任务的处理方式。处理方式有三种：
+            1、直接切换（SynchronusQueue）
+            2、无界队列（LinkedBlockingQueue）能够创建的最大线程数为corePoolSize,这时maximumPoolSize就不会起作用了。当线程池中所有的核心线程都是运行状态的时候，新的任务提交就会放入等待队列中。
+            3、有界队列（ArrayBlockingQueue）最大maximumPoolSize，能够降低资源消耗，但是这种方式使得线程池对线程调度变的更困难。因为线程池与队列容量都是有限的。所以想让线程池的吞吐率和处理任务达到一个合理的范围，又想使我们的线程调度相对简单，并且还尽可能降低资源的消耗，我们就需要合理的限制这两个数量
+
+            分配技巧:
+             如果想降低资源的消耗包括降低cpu使用率、操作系统资源的消耗、上下文切换的开销等等，可以设置一个较大的队列容量和较小的线程池容量，这样会降低线程池的吞吐量。如果我们提交的任务经常发生阻塞，我们可以调整maximumPoolSize。如果我们的队列容量较小，我们需要把线程池大小设置的大一些，这样cpu的使用率相对来说会高一些。但是如果线程池的容量设置的过大，提高任务的数量过多的时候，并发量会增加，那么线程之间的调度就是一个需要考虑的问题。这样反而可能会降低处理任务的吞吐量。
+
+        4. keepAliveTime: 线程没有任务执行时最多保持多久时间终止（当线程中的线程数量大于corePoolSize的时候，如果这时没有新的任务提交核心线程外的线程不会立即销毁，而是等待，直到超过keepAliveTime）
+        5. unit: keepAliveTime的时间单位
+        6. threadFactory: 线程工厂，用来创建线程，有一个默认的工场来创建线程，这样新创建出来的线程有相同的优先级，是非守护线程、设置好了名称.
+        7. rejectHandler: 当拒绝处理任务时(阻塞队列满)的策略（AbortPolicy默认策略直接抛出异常、CallerRunsPolicy用调用者所在的线程执行任务、DiscardOldestPolicy丢弃队列中最靠前的任务并执行当前任务、DiscardPolicy直接丢弃当前任务）
+
+        corePoolSize、maximumPoolSize、workQueue 三者关系：
+        1）如果此时线程池中的数量小于 corePoolSize（核心池的大小） ， 即使线程池中的线程都处于空闲状态， 也要创建新的线程来处理被添加的任务（也就是每来一个任务， 就要创建一个线程来执行任务） 。
+        2）如果此时线程池中的数量大于等于 corePoolSize， 但是缓冲队列workQueue 未满， 那么任务被放入缓冲队列， 则该任务会等待空闲线程将其取出去执行。
+        3）如果此时线程池中的数量大于等于 corePoolSize ， 缓冲队列workQueue 满， 并且线程池中的数量小于 maximumPoolSize（线程池最大线程数） ， 建新的线程来处理被添加的任务。
+        4）如果此时线程池中的数量大于等于 corePoolSize， 缓冲队列workQueue 满， 并且线程池中的数量等于 maximumPoolSize， 那么通过RejectedExecutionHandler 所指定的策略(任务拒绝策略)来处理此任务。也就是处理任务的优先级为： 核心线程 corePoolSize、 任务队列workQueue、 最大线程 maximumPoolSize， 如果三者都满了， 使用handler 处理被拒绝的任务。
+        特别注意， 在 corePoolSize 和 maximumPoolSize 之间的线程数会被自动释放。 当线程池中线程数量大于 corePoolSize 时， 如果某线程空闲时间超过 keepAliveTime， 线程将被终止， 直至线程池中的线程数目不大于 corePoolSize。 这样， 线程池可以动态的调整池中的线程数。
