@@ -64,6 +64,5 @@ public class newScheduledThreadPoolExample {
             executorService.scheduleWithFixedDelay(task, 3, 1, TimeUnit.SECONDS);
         }
 
-
     }
 }

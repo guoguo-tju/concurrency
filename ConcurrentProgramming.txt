@@ -627,3 +627,108 @@ CPU多级缓存:
         3）如果此时线程池中的数量大于等于 corePoolSize ， 缓冲队列workQueue 满， 并且线程池中的数量小于 maximumPoolSize（线程池最大线程数） ， 建新的线程来处理被添加的任务。
         4）如果此时线程池中的数量大于等于 corePoolSize， 缓冲队列workQueue 满， 并且线程池中的数量等于 maximumPoolSize， 那么通过RejectedExecutionHandler 所指定的策略(任务拒绝策略)来处理此任务。也就是处理任务的优先级为： 核心线程 corePoolSize、 任务队列workQueue、 最大线程 maximumPoolSize， 如果三者都满了， 使用handler 处理被拒绝的任务。
         特别注意， 在 corePoolSize 和 maximumPoolSize 之间的线程数会被自动释放。 当线程池中线程数量大于 corePoolSize 时， 如果某线程空闲时间超过 keepAliveTime， 线程将被终止， 直至线程池中的线程数目不大于 corePoolSize。 这样， 线程池可以动态的调整池中的线程数。
+
+        项目开启多少个线程的问题:
+        当我不知道一个新环境我可以用多少个线程，而又想尽可能快的完成时，我也会选择从10开始，每次10个递增去尝试，看应用的表现，这样相对安全很多。你可以会认为每次调整都要发布重新部署，我们通常会预置一个开关代替线程数，然后每次测试时只需要动态的去修正这个开关配置的数值就可以了，不断的调整到最佳。这个验证过程中，也要考虑应用高峰和低峰的时间段，和本身启动多线程处理时间段的对比。
+        对于任何一个应用，可以启动多少个线程都是不一样的，在寻找最佳线程数的时候，需要优先保证应用的“安全”，但一定不要一开始就给一个特别大的线程数，这样不但可能完成不了，反而可能直接让项目出现各种问题。
+
+        线程池的方法:
+        execute(): 提交任务，交给线程池执行
+        submit(): 提交任务，能够返回执行结果 execute+Future
+        shutdown(): 关闭线程池，等待任务都执行完
+        shutdownNow(): 关闭线程池，不等待任务执行完
+        getTaskCount(): 线程池已执行和未执行的任务总数
+        getCompleteTaskCount(): 已完成的任务数量
+        getPoolSize(): 线程池当前的线程数量
+        getActiveCount(): 当前线程池中正在执行任务的线程数量
+        这四个get方法可以用来监控线程池的运行状况
+
+        使用Executor创建线程池:
+        1. newCachedThreadPool
+           创建一个可缓存的线程池，如果线程池的长度超过了处理的需要，可以灵活回收空闲线程。如果没有可回收的就新建线程。
+           public static ExecutorService newCachedThreadPool() {
+             return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+                                           60L,TimeUnit.SECONDS,
+                                           new SynchronousQueue<Runnable>());
+           }
+
+           注意: newCachedThreadPool的返回值是ExecutorService类型，该类型只包含基础的线程池方法，但却不包含线程监控相关方法，因此在使用返回值为ExecutorService的线程池类型创建新线程时要考虑到具体情况。
+
+        2. newFixedThreadPool
+           定长线程池，可以线程现成的最大并发数，超出在队列等待.
+           public static ExecutorService newFixedThreadPool(int nThreads) {
+             return new ThreadPoolExecutor(nThreads, nThreads,
+                                           0L, TimeUnit.MILLISECONDS,
+                                           new LinkedBlockingQueue<Runnable>());
+           }
+
+        3. newSingleThreadExecutor
+           单线程化的线程池，用唯一的一个共用线程执行任务，保证所有任务按指定顺序执行（FIFO、优先级…）.
+           public static ExecutorService newSingleThreadExecutor() {
+             return new FinalizableDelegatedExecutorService
+                    (new ThreadPoolExecutor(1, 1,
+                                            0L, TimeUnit.MILLISECONDS,
+                                            new LinkedBlockingQueue<Runnable>()));
+           }
+
+        4. newScheduledThreadPool
+           定长线程池，支持定时和周期任务执行
+           public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize) {
+             return new ScheduledThreadPoolExecutor(corePoolSize);
+           }
+           public ScheduledThreadPoolExecutor(int corePoolSize) {
+             super(corePoolSize, Integer.MAX_VALUE, 0, NANOSECONDS,     //此处super指的是ThreadPoolExecutor
+                   new DelayedWorkQueue());
+           }
+
+           scheduleAtFixedRate : 按指定频率周期执行某个任务。
+           例如:
+            executor.scheduleAtFixedRate(new EchoServer(),0,100,TimeUnit.MILLISECONDS);
+            初始化延迟0ms开始执行，每隔100ms重新执行一次任务。当执行任务的时间大于我们指定的间隔时间时，它并不会在指定间隔时开辟一个新的线程并发执行这个任务。而是等待该线程执行完毕。
+            需要注意的，我们需要捕获最上层的异常，防止出现异常中止执行，导致周期性的任务不再执行。
+
+           scheduleWithFixedDelay : 按指定频率间隔执行某个任务。
+           例如:
+            executor.scheduleWithFixedDelay(new EchoServer(),0,100,TimeUnit.MILLISECONDS);
+            初始化时延时0ms开始执行,本次执行结束后延迟100ms开始下次执行。
+
+           小扩展：延迟执行任务的操作，java中还有Timer类同样可以实现
+           Timer timer = new Timer();
+           timer.schedule(new TimerTask() {
+                @Override public void run() {
+                    log.warn("timer run");
+                }
+           }, new Date(), 5 * 1000);
+           定时任务, 从当前时间开始执行, 每5s执行一次
+
+        注意: 当线程池中的每个任务很小时,小到任务计算的时间和线程调度的时间很接近时,这时用线程池反而会慢,因为资源太多被用在线程调度
+
+
+
+        问: 开启100个线程,做一些查询和添加操作,由于环境问题（测试环境在外网）和带宽问题（每人限制只有1M带宽）会发生很多超时错误，所以想你给点意见，这段代码大体上结构有问题吗?
+
+            //这里会循环100次
+            for (Date date : concurrentSet) {
+                //每天一个线程处理
+                executorService.execute(() -> {
+                    //一些查询操作
+                    xxxService.select();
+                    //还有一些添加操作
+                    xxxService.batchInsert();
+            }
+        答:
+        你好，说一下我的想法，100个线程有点多，而且是对数据库的操作，感觉这个线程数目可能已经超过了你数据库连接池配置的连接数目了，这直接会带来这么多线程，即使是同步执行，也很多会阻塞在数据库连接那里，并出现或许数据库连接失败的异常。这是第一个问题。
+        第二个问题，数据库资源通常是项目里最紧缺的，这里过分消耗，可能会导致那个时间点其他功能受影响。数据库连接是一方面，即使能拿到连接，同时进行大量的操作，数据库的压力也会突然变大。如果数据库要做主从同步，还可能造成同步的延迟。
+        第三个问题，不知道你目前这样操作，一次select() 和 batchInsert() 数据量有多大，如果很大的话，1M的带宽可能直接打满，导致项目无法对外提供功能。而如果很小的话，线程数少一些，也会做的特别快。
+        第四个问题，你也提到了1M的带宽，这个限制确实不适合过多线程同时执行。说到这里，你可以在本地启动10个线程、20个线程、30个线程去做些测试，对比一下10到20、20到30这个过程中内存、CPU等的变化。你基本上可以大致评估达到100个线程的影响。
+
+        问: web应用中线程池是设置为成员变量还是局部变量?
+        答: 基本上很少使用局部变量声明的线程池，每次处理时都生成一个线程池再销毁，这个代价实在太大了，而且如果请求多的时候，可能同一时间创建大量的线程池，导致应用直接不可用。成员变量声明的线程池，若不是常用的服务模块，那感觉基本没有使用线程池的必要。
+        问: 成员变量的线程池,如何保证在应用停止时,正常的线程任务都执行完, 我想到的时若是spring 声明的 bean,可以在bean destroy时调用 pool.shutdown, 但若应用是异常停止(比如kill),如何保证?
+        答: 这个问题倒是蛮不错，其实应用停止时，jvm时提供了扩展允许你做些事情的。我给你提供个方法，你自己去了解下吧，这种写法成为“JVM钩子”。具体代码为：
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+            // do something when jvm shutdown
+            }
+        });
