@@ -754,3 +754,97 @@ CPU多级缓存:
           1.注意加上顺序
           2.使用加锁时限(超过时限放弃加锁)
           3.死锁检测
+
+
+
+	并发最佳实践:
+		1.使用本地变量:
+		2.使用不可变类
+		3.最小化锁的作用域范围: S=1/(1-a+a/n)  a:并行计算部分所占的比例 n:并行处理的节点个数 S:代表加速比
+		a=0时,S=1,表示只有串行,没有并行; a=1时,S=n,表示只有并行,没有串行;
+		n->∞时,S->1/(1-a),即加速比的上线.
+		所以上锁和解锁的代码越小越好.
+		4.使用线程池的Executor,而不是直接使用new Thread执行.
+		5.宁可使用同步(catchDownLatch和semphore)也不要使用线程的wait和notify.
+		6.使用Blocking Queue实现生产-消费模式
+		7.使用并发集合(copyOnWriteArrayList,copyOnWriteSet,concurrentHashMap等)而不是加了锁的同步集合
+		8.使用Semaphore创建有界的访问(比如数据库连接,socket连接,需要控制访问数量)
+		9.宁可使用同步代码块,也不实用同步的方法
+		10.避免使用静态变量(如果必须用,可以将其变为final,如果是集合的话可以考虑用只读集合)
+
+	问: 在使用completionService， countDownLatch， semaphore等并发工具的时候， 经常与到检查型异常InterruptedException。
+	这个异常应该如何处理呢， 是分别try catch， 还是用throws的方式汇总的一起处理， 需要使用Thread.currentThread().interrupt();这样的结构去显示地中断线程吗？
+	答: 你好，一个线程不是可以随便中断的。即使我们给线程设置了中断状态，它也还是可以获得CPU时间片的。通常只有因为sleep()方法而阻塞的线程可以立即收到InterruptedException异常，所以在sleep中断任务的情况下可以直接使用try-catch跳出任务。其它情况下，需要通过判断线程状态来判断是否需要跳出任务(Thread.interrupted()方法)。
+	另外，synchronized方法修饰的代码不会在收到中断信号后立即中断。ReentrantLock锁控制的同步代码可以通过InterruptException中断。
+    Thread.interrupted方法调用一次之后会立即清空中断状态。可以自己用变量保存状态。但这个方法目前已经用的很少了，J.U.C里提供的组件已经可以处理绝大部分的场景了
+
+    Spring与线程安全
+  	spring的bean对象能做到线程安全是因为bean对象是无状态的,不存在多个线程去修改同一个状态的问题.
+
+  	问: 对无状态对象理解比较迷茫，什么是有状态的变量或者类？？能举一个具体的栗子吗？？
+  	答: 你好，有状态就是有数据存储功能。有状态对象(Stateful Bean)，就是有实例变量的对象，可以保存数据，是非线程安全的。代码举例：
+
+	/**
+	 * 有状态bean,有state,user等属性，并且user有存偖功能，是可变的。
+	 */
+	public class StatefulBean {
+	    public int state;
+	    // 由于多线程环境下，user是引用对象，是非线程安全的
+	    public User user;
+	    public int getState() {
+	        return state;
+	    }
+	    public void setState(int state) {
+	        this.state = state;
+	    }
+	    public User getUser() {
+	        return user;
+	    }
+	    public void setUser(User user) {
+	        this.user = user;
+	    }
+	}
+
+	无状态主要是一次操作，不能保存数据。无状态对象(Stateless Bean)，就是没有实例变量的对象.不能保存数据，是不变类，是线程安全的。代码举例：
+	/**
+	 * 无状态bean,不能存偖数据。因为没有任何属性，所以是不可变的。只有一系统的方法操作。
+	 */
+	public class StatelessBeanService {
+	    // 虽然有billDao属性，但billDao是没有状态信息的，是Stateless Bean.
+	    BillDao billDao;
+	    public BillDao getBillDao() {
+	        return billDao;
+	    }
+	    public void setBillDao(BillDao billDao) {
+	        this.billDao = billDao;
+	    }
+	    public List<User> findUser(String Id) {
+	         return null;
+	    }
+	}
+
+
+	HashMap与ConcurrentHashMap
+	hashMap: 通过数组与指针(引用)实现的
+	性能受两个参数的影响: 初始容量,加载因子
+	初始容量默认16,加载因子默认0.75f
+
+	hashMap数组的容量值必须是2^n? 因为取模的代价远高于位操作代价,在计算index时将key的hash值对2^(n-1)进行与运算,其结果与取模操作是完全相同的,所以用取与不用取模.hashMap会在初始化容量时根据用户的传入通过位运算计算出2^n的容量,不需要用户自己传入.
+
+	hashMap的线程不安全主要体现在?
+	resize()时可能出现死循环, 以及在迭代过程中出现fast-fail错误: (快速失败机制，是Java集合(Collection)中的一种错误检测机制。在迭代集合的过程中该集合在结构上发生改变的时候，就有可能会发生fast-fail，即抛出ConcurrentModificationException异常。fast-fail机制并不保证在异步修改一定会抛出异常，它只是尽最大努力去抛出，所以这种机制一般仅用于检测bug。)
+	扩容时出现死循环: hashMap的数组容量达到(容量*扩容因子)时会触发resize()来扩容,会首先创建一个2倍于原容量的新数组,然后将原先数组中的元素重新rehash()计算index来放入新的数组.在多线程环境下,这个过程中容易出现死循环,即在两个元素之间来回循环执行rehash(),导致后面的元素不能rehash();(详细可参见9-4,3:30处)
+
+	ConcurrentHashMap(详见concurrentHashMap的结构图):
+	conCurrentHasMap最外层是一个Segment的大的数组,每个Segment包含一个与hashMap差不多的链表数组.现根据哈希码高sshit位决定Segment数组的index,接下来操作Segment与操作hashMap一样.Segemnt继承自ReentrantLock的,可以很方便地对每一个Segment进行锁相关的处理.
+	ConcurrentHashMap与HashMap的不同:
+	1.ConcurrentHashMap线程安全,HashMap线程不安全
+	2.ConcurrentHashMap不允许key和value为空,而HashMap允许.
+	3.HashMap不允许iterator遍历时更新,而ConcurrentHashMap允许,并且更新对后续的更新是可见的.
+
+	Java8为了提高ConcurrentHashMap的并发性,废弃了Segment分段锁,采用了一个大的数组,若链表长度超过一定长度(默认为8)将链表改为红黑树,寻址复杂度有o(n)转变为o(logn).HashMap中页同样的引入了红黑树.
+	ConcurrentHashMap源码分析: https://blog.csdn.net/u010412719/article/details/52145145
+
+	注意: 涉及到jdk本身提供的类在调试时都有这个问题，如果断点加的时机不对，就会被其他的数据影响你的调试。你可以尝试着在自己调试的代码前加个log，当这一行log明确执行到的时候，再去底层的类里加上断点。
+	关于调试，idea里有个小技巧，可以在调试窗口里临时关掉某些断点，需要时再打开，很好用。对于断点加早了，这样会容易很多，不需要挨个取消，而是进来关闭一下，等走到自己要测试的代码时再打开。
+
