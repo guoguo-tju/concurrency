@@ -34,7 +34,7 @@ public class HttpFilter implements Filter {
         //打印当前线程id与请求路径
         log.info("into httpFilter , threadLocal id is {} , url is {}", Thread.currentThread().getId() , request.getServletPath());
         //将请求路径放在当前线程对象threadLocal里
-        ThreadLocalCache.add(request.getServletPath());
+        RequestHolder.add(request.getServletPath());
         //放行
         filterChain.doFilter(servletRequest,servletResponse);
     }

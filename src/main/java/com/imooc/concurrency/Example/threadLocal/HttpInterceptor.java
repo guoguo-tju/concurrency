@@ -29,7 +29,7 @@ public class HttpInterceptor extends HandlerInterceptorAdapter {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
 
         //方法结束后删除当前线程中的value
-        ThreadLocalCache.remove();
+        RequestHolder.remove();
         log.info("afterCompletion....");
         return;
     }

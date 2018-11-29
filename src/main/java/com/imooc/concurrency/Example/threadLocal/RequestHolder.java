@@ -6,7 +6,7 @@ package com.imooc.concurrency.Example.threadLocal;
  * @author: Karl Guo
  * @create: 2018-09-29 14:08
  **/
-public class ThreadLocalCache {
+public class RequestHolder {
 
     private final static ThreadLocal<String> threadLocalCache = new ThreadLocal<>();
 

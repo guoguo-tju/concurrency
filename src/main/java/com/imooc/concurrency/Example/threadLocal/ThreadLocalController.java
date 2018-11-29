@@ -18,7 +18,7 @@ public class ThreadLocalController {
     @RequestMapping("/test")
     @ResponseBody
     public String test(){
-        return ThreadLocalCache.getString();
+        return RequestHolder.getString();
     }
 
 

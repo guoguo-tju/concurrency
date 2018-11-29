@@ -5,11 +5,15 @@ import com.imooc.concurrency.Example.threadLocal.HttpInterceptor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard;
 
 @SpringBootApplication
+@EnableHystrixDashboard    //hystrix的注解
+@EnableCircuitBreaker
 public class ConcurrencyApplication implements WebMvcConfigurer {
 
     public static void main(String[] args) {
