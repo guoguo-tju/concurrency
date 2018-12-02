@@ -167,6 +167,11 @@ This is [an example](http://example.com/ "Title") inline link.
 ![Alt text](/static/img/common/logo.png?t=1)
 
 ![Alt text](/static/img/common/logo.png?t=1 "Optional title")
+
+* 一个惊叹号 !
+* 接着一个方括号，里面放上图片的替代文字，也就是当图片还未加载成功时显示的替换文本
+* 接着一个普通括号，里面放上图片的网址，以及可选的用双引号（或单引号或括弧）包住的’title’文字，两者之间用若干个空格分割开来，如果加上了’title’文字，那么鼠标移到该图片上就会显示出该文字
+
 ```
 
 <br>
