@@ -78,10 +78,10 @@
     ConCurrencyExample01
    
    <h3 id="原子性">原子性</h3>
-   
     CAS: 不断获取底层的值,直到和当前对象(工作内存中的)值相等(var2=var5)
     AtomicXXX: CAS(compareAndSwap), Unsafe.compareAndSwapInt
     底层实现:
+<pre>
     //var1,传过来的count对象(AtomicInteger)
     //var2,该对象工作内存中的值
     //var4,要增加的值
@@ -94,38 +94,32 @@
         } while(!this.compareAndSwapInt(var1, var2, var5, var5 + var4));
         return var5;
     }	
-
     这里的compareAndSwapInt（var1, var2, var5, var5 + var4）换成 compareAndSwapInt（obj, offset, expect, update）能清楚一些，如果obj内的value和expect相等，就证明没有其他线程改变过这个变量，那么就更新它(主内存)为update,返回的值是var5给工作内存,然后工作内存又+1。
-
     CAS有3个操作数，内存值V，旧的预期值A，要修改的新值B。当且仅当预期值A和内存值V相同时，将内存值V修改为B，否则什么都不做。
-
-    AtomicLong,LongAdder:(面试)
-    AtomicLong:死循环方式,如果并发高竞争非常激烈，那么失败量就会很高，性能会受到影响
-    LongAdder:jvm对long，double这些64位的变量拆成两个32位的操作,在高并发的场景，通过热点分区来提高并行度,缺点：在统计的时候如果有并发更新，可能会导致结果有些误差,要求数据精确的话不要使用
-
-    compareAndSet:更多用到AtomicBoolean中,保证我们要控制的这段代码只被执行一次.
-
-    AtomicReference:用法同AtomicInteger一样，但是可以放各种对象:AtomicReference<Integer> count = new AtomicReference<>(0);
-    AtomicIntegerFieldUpdater:原子性的去更新某一个类的实例的指定的某一个字段.newUpdater()方法的第一个参数是某类的class文件,第二个参数是指定的字段名,注意:该字段必须是volatile修饰,并且不能是static修饰.
-
-    AtomicStampReference:CAS的ABA问题
-    ABA问题：在CAS操作的时候，其他线程将变量的值A改成了B由改成了A，本线程使用期望值A与当前变量进行比较的时候，发现A变量没有变，于是CAS就将A值进行了交换操作，这个时候实际上A值已经被其他线程改变过，这与设计思想是不符合的
-    解决思路：每次变量更新的时候，把变量的版本号加一，这样只要变量被某一个线程修改过，该变量版本号就会发生递增操作，从而解决了ABA变化	
-
+</pre>
+   AtomicLong,LongAdder:(面试)
+   * AtomicLong:死循环方式,如果并发高竞争非常激烈，那么失败量就会很高，性能会受到影响
+   * LongAdder:jvm对long，double这些64位的变量拆成两个32位的操作,在高并发的场景，通过热点分区来提高并行度,缺点：在统计的时候如果有并发更新，可能会导致结果有些误差,要求数据精确的话不要使用
+   * compareAndSet:更多用到AtomicBoolean中,保证我们要控制的这段代码只被执行一次.
+   * AtomicReference:用法同AtomicInteger一样，但是可以放各种对象:AtomicReference<Integer> count = new AtomicReference<>(0);
+   * AtomicIntegerFieldUpdater:原子性的去更新某一个类的实例的指定的某一个字段.newUpdater()方法的第一个参数是某类的class文件,第二个参数是指定的字段名,注意:该字段必须是volatile修饰,并且不能是static修饰.
+<pre></pre>
+   AtomicStampReference:CAS的ABA问题:
+   * ABA问题：在CAS操作的时候，其他线程将变量的值A改成了B由改成了A，本线程使用期望值A与当前变量进行比较的时候，发现A变量没有变，于是CAS就将A值进行了交换操作，这个时候实际上A值已经被其他线程改变过，这与设计思想是不符合的
+   * 解决思路：每次变量更新的时候，把变量的版本号加一，这样只要变量被某一个线程修改过，该变量版本号就会发生递增操作，从而解决了ABA变化
+<pre>
     AtomicLongArray可以指定更新一个数组指定索引位置的值compareAndSet(int i, long expect, long update)
-
     AtomicBoolean(平时用的比较多),在并发情况下可以让一段代码只被执行一次.
     AtomicBoolean isHappened =  new AtomicBoolean(false);
     if(isHappened.compareAndSet(false,ture)){
     //在高并发情况下if里面的代码只会被执行一次
         ...
     }
-
-    native:
-    使用native关键字说明这个方法是原生函数，也就是这个方法是用C/C++语言实现的，并且被编译成了DLL，由java去调用。 这些函数的实现体在DLL中，JDK的源代码中并不包含，你应该是看不到的。对于不同的平台它们也是不同的。这也是java的底层机制，实际上java就是在不同的平台上调用不同的native方法实现对操作系统的访问的。
-    
-    独占锁：是一种悲观锁，synchronized就是一种独占锁，会导致其它所有需要锁的线程挂起，等待持有锁的线程释放锁。
-    乐观锁：每次不加锁，假设没有冲突去完成某项操作，如果因为冲突失败就重试，直到成功为止。乐观锁用到的机制就是CAS，Compare and Swap。CAS有3个操作数，内存值V，旧的预期值A，要修改的新值B。当且仅当预期值A和内存值V相同时，将内存值V修改为B，否则什么都不做。
+</pre>
+   native:
+   * 使用native关键字说明这个方法是原生函数，也就是这个方法是用C/C++语言实现的，并且被编译成了DLL，由java去调用。 这些函数的实现体在DLL中，JDK的源代码中并不包含，你应该是看不到的。对于不同的平台它们也是不同的。这也是java的底层机制，实际上java就是在不同的平台上调用不同的native方法实现对操作系统的访问的。   
+   * 独占锁：是一种悲观锁，synchronized就是一种独占锁，会导致其它所有需要锁的线程挂起，等待持有锁的线程释放锁。
+   * 乐观锁：每次不加锁，假设没有冲突去完成某项操作，如果因为冲突失败就重试，直到成功为止。乐观锁用到的机制就是CAS，Compare and Swap。CAS有3个操作数，内存值V，旧的预期值A，要修改的新值B。当且仅当预期值A和内存值V相同时，将内存值V修改为B，否则什么都不做。
 
    <h3 id="原子性-锁-synchronize">原子性-锁-synchronize</h3>  
     
