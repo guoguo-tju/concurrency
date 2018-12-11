@@ -3,6 +3,19 @@ package com.imooc.concurrency.Example.deadLock;
 import lombok.extern.slf4j.Slf4j;
 
 
+/**
+ *  死锁的demo
+ *
+ *  定位死锁方法:
+ *  选取最常见的 jstack
+ *  首先，可以使用 jps 或者系统的 ps 命令、任务管理器等工具，确定进程 ID。
+ *  其次，调用 jstack 获取线程栈：
+ *  ${JAVA_HOME}\bin\jstack your_pid
+ *  然后，分析得到的输出:
+ *  ...
+ *  结合代码分析线程栈信息。上面这个输出非常明显，找到处于 BLOCKED 状态的线程，按照试图获取（waiting）的锁 ID查找，很快就定位问题。
+ *  jstack 本身也会把类似的简单死锁抽取出来，直接打印出来。
+ */
 @Slf4j
 public class DeadLockExample implements Runnable {
     public int flag = 1;
